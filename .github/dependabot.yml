@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # Keeps the action versions pinned in .github/workflows up to date
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+  # Keeps Python dependencies in pyproject.toml current
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "monthly"

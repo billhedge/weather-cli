@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "weathercli"
+version = "0.1.0"
+description = "Command-line weather and air quality lookup powered by the free Open-Meteo API."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = [
+    "requests>=2.31",
+]
+
+# TODO (milestone 8): once src/weathercli/cli.py has a main() that returns an
+# exit code, register it as a console script here:
+#
+# [project.scripts]
+# weather = "weathercli.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-requests>=2.31",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/weathercli"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+target-version = "py310"
+
+[tool.ruff.lint]
+# E/F: pycodestyle + pyflakes, I: import sorting, UP: modern syntax,
+# B: bugbear (likely bugs), SIM: simplifications
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+strict = true
+python_version = "3.10"
+files = ["src"]
