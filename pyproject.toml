@@ -12,6 +12,7 @@ license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
     "requests>=2.31",
+    "requests-cache>=1.2"
 ]
 
 # TODO (milestone 8): once src/weathercli/cli.py has a main() that returns an
@@ -27,6 +28,7 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
     "types-requests>=2.31",
+    "requests-cache>=1.2"
 ]
 
 [tool.hatch.build.targets.wheel]
