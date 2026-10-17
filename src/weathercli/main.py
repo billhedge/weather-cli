@@ -1,8 +1,8 @@
 import sys
 
-import requests
 import requests_cache
 
+import weathercli.network as network
 from weathercli.data import Current_Weather, Forecast, Location, Units
 
 GEOCODE_ENDPOINT = "https://geocoding-api.open-meteo.com/v1/search"
@@ -11,11 +11,8 @@ FORECAST_ENDPOINT = "https://api.open-meteo.com/v1/forecast"
 requests_cache.install_cache("weathercli_cache", expire_after=3600)
 
 
-def get_location() -> Location:
-    geocode_response = requests.get(
-        GEOCODE_ENDPOINT, params={"name": input("Enter a location: ")}, timeout=10
-    )
-    geocode_response.raise_for_status()
+def get_location(api: network.ApiClient) -> Location:
+    geocode_response = api.get(GEOCODE_ENDPOINT, params={"name": input("Enter a location: ")})
 
     try:
         loc_dict = geocode_response.json()["results"][0]
@@ -33,7 +30,9 @@ def get_location() -> Location:
         sys.exit(1)
 
 
-def get_weather_data(loc: Location) -> tuple[Units, Current_Weather, Forecast]:
+def get_weather_data(
+    api: network.ApiClient, loc: Location
+) -> tuple[Units, Current_Weather, Forecast]:
     forecast_params: dict[str, str | float] = {
         "latitude": loc.latitude,
         "longitude": loc.longitude,
@@ -48,8 +47,7 @@ def get_weather_data(loc: Location) -> tuple[Units, Current_Weather, Forecast]:
         "temperature_unit": "fahrenheit",
         "precipitation_unit": "inch",
     }
-    forecast_response = requests.get(FORECAST_ENDPOINT, params=forecast_params, timeout=10)
-    forecast_response.raise_for_status()
+    forecast_response = api.get(FORECAST_ENDPOINT, params=forecast_params)
 
     try:
         response_data = forecast_response.json()
@@ -85,8 +83,9 @@ def get_weather_data(loc: Location) -> tuple[Units, Current_Weather, Forecast]:
 
 
 def main() -> None:
-    loc = get_location()
-    units, current_weather, forecast = get_weather_data(loc)
+    api = network.ApiClient(timeout=10)
+    loc = get_location(api)
+    units, current_weather, forecast = get_weather_data(api, loc)
 
     print("Today's date:", current_weather.date)
     print("Current temperature:", current_weather.temperature, units.temperature_unit)
