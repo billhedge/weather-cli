@@ -1,15 +1,15 @@
+import collections.abc as abc
 import sys
 
 import requests_cache
 
+import weathercli.arguments as arguments
 import weathercli.exceptions as ex
 import weathercli.network as network
 from weathercli.data import Current_Weather, Forecast, Location, Units
 
 GEOCODE_ENDPOINT = "https://geocoding-api.open-meteo.com/v1/search"
 FORECAST_ENDPOINT = "https://api.open-meteo.com/v1/forecast"
-
-requests_cache.install_cache("weathercli_cache", expire_after=3600)
 
 
 def get_location(api: network.ApiClient, location_name: str) -> Location:
@@ -34,7 +34,7 @@ def get_location(api: network.ApiClient, location_name: str) -> Location:
 
 
 def get_weather_data(
-    api: network.ApiClient, loc: Location
+    api: network.ApiClient, loc: Location, unit_type: str
 ) -> tuple[Units, Current_Weather, Forecast]:
     forecast_params: dict[str, str | float] = {
         "latitude": loc.latitude,
@@ -46,10 +46,12 @@ def get_weather_data(
         # just temperature
         "current": "temperature_2m",
         "timezone": loc.timezone,
-        "wind_speed_unit": "mph",
-        "temperature_unit": "fahrenheit",
-        "precipitation_unit": "inch",
     }
+    if unit_type == "imperial":  # metric units are default, so they don't need to be specified
+        forecast_params["wind_speed_unit"] = "mph"
+        forecast_params["temperature_unit"] = "fahrenheit"
+        forecast_params["precipitation_unit"] = "inch"
+
     forecast_response = api.get_json(FORECAST_ENDPOINT, params=forecast_params)
 
     try:
@@ -84,17 +86,22 @@ def get_weather_data(
         ) from e
 
 
-def main() -> None:
-    location_name = input("Enter a location: ")
+def main(argv: abc.Sequence[str] | None = None) -> int:
+    args = arguments.parse_args(argv)
+
+    if not args.no_cache:
+        requests_cache.install_cache("weathercli_cache", expire_after=args.cache_expire)
+
+    location_name = " ".join(args.location)
     api = network.ApiClient()
     try:
         loc = get_location(api, location_name)
-        units, current_weather, forecast = get_weather_data(api, loc)
+        units, current_weather, forecast = get_weather_data(api, loc, args.units)
     except ex.AppError as e:
         print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+        return 1
 
-    print("Today's date:", current_weather.date)
+    print("Weather in ", location_name, "; Today's date:", current_weather.date)
     print("Current temperature:", current_weather.temperature, units.temperature_unit)
     print("Forecast for:", forecast.date)
     print("Daily maximum temperature:", forecast.daily_max_temp, units.temperature_unit)
@@ -102,6 +109,8 @@ def main() -> None:
     print("Apparent maximum temperature:", forecast.apparent_max_temp, units.temperature_unit)
     print("Apparent minimum temperature:", forecast.apparent_min_temp, units.temperature_unit)
 
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
