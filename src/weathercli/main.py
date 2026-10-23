@@ -6,6 +6,7 @@ import requests_cache
 
 import weathercli.arguments as arguments
 import weathercli.exceptions as ex
+import weathercli.formatting
 import weathercli.network as network
 from weathercli.data import CurrentWeather, DailyForecast, Location, Units
 
@@ -123,15 +124,7 @@ def main(argv: abc.Sequence[str] | None = None) -> int:
         print(f"Error: {e}", file=sys.stderr)
         return 1
 
-    print("Weather in", location_name, "at", current_weather.observed_at)
-    print("Current temperature:", current_weather.temp, units.temperature_unit)
-    for day in forecasts:
-        print("Forecast for:", day.forecast_date)
-        print("Daily maximum temperature:", day.daily_max_temp, units.temperature_unit)
-        print("Daily minimum temperature:", day.daily_min_temp, units.temperature_unit)
-        print("Apparent maximum temperature:", day.apparent_max_temp, units.temperature_unit)
-        print("Apparent minimum temperature:", day.apparent_min_temp, units.temperature_unit)
-
+    print(weathercli.formatting.formatted_output(location_name, units, current_weather, forecasts))
     return 0
 
 
