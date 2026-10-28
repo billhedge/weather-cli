@@ -1,5 +1,7 @@
 import datetime
 
+import pytest
+
 import weathercli.formatting
 from weathercli.data import CurrentWeather, DailyForecast, Units
 
@@ -19,6 +21,13 @@ df2 = DailyForecast(
     apparent_max_temp=72.3,
     apparent_min_temp=65.1,
 )
+df3 = DailyForecast(
+    forecast_date=datetime.date(2026, 10, 24),
+    daily_max_temp=105.7,
+    daily_min_temp=-43.2,
+    apparent_max_temp=121.2,
+    apparent_min_temp=-123.1,
+)
 
 units_f = Units(temperature_unit="°F")
 units_c = Units(temperature_unit="°C")
@@ -26,7 +35,7 @@ units_a = Units(temperature_unit="°Axolotl")
 
 
 def test_formatting_f():
-    output = weathercli.formatting.formatted_output(loc_str, units_f, cw, [df1, df2])
+    output = weathercli.formatting.formatted_output(loc_str, units_f, cw, [df1, df2, df3])
     correct = []
     correct.append("Weather in New York at 2026-10-22 11:00")
     correct.append("Now: 72.1 °F")
@@ -35,12 +44,13 @@ def test_formatting_f():
     correct.append("----------  -------  -----------  -------  -----------")
     correct.append("Thu Oct 22     73.1         75.5     60.2         62.5")
     correct.append("Fri Oct 23     72.0         72.3     63.5         65.1")
+    correct.append("Sat Oct 24    105.7        121.2    -43.2       -123.1")
 
     assert output == "\n".join(correct)
 
 
 def test_formatting_c():
-    output = weathercli.formatting.formatted_output(loc_str, units_c, cw, [df1, df2])
+    output = weathercli.formatting.formatted_output(loc_str, units_c, cw, [df1, df2, df3])
     correct = []
     correct.append("Weather in New York at 2026-10-22 11:00")
     correct.append("Now: 72.1 °C")
@@ -49,12 +59,13 @@ def test_formatting_c():
     correct.append("----------  -------  -----------  -------  -----------")
     correct.append("Thu Oct 22     73.1         75.5     60.2         62.5")
     correct.append("Fri Oct 23     72.0         72.3     63.5         65.1")
+    correct.append("Sat Oct 24    105.7        121.2    -43.2       -123.1")
 
     assert output == "\n".join(correct)
 
 
 def test_formatting_axolotl():
-    output = weathercli.formatting.formatted_output(loc_str, units_a, cw, [df1, df2])
+    output = weathercli.formatting.formatted_output(loc_str, units_a, cw, [df1, df2, df3])
     correct = []
     correct.append("Weather in New York at 2026-10-22 11:00")
     correct.append("Now: 72.1 °Axolotl")
@@ -63,5 +74,27 @@ def test_formatting_axolotl():
     correct.append("----------  -------------  -----------------  ------------  -----------------")
     correct.append("Thu Oct 22           73.1               75.5          60.2               62.5")
     correct.append("Fri Oct 23           72.0               72.3          63.5               65.1")
+    correct.append("Sat Oct 24          105.7              121.2         -43.2             -123.1")
 
     assert output == "\n".join(correct)
+
+
+def test_formatting_empty():
+    output = weathercli.formatting.formatted_output(loc_str, units_f, cw, [])
+    correct = []
+    correct.append("Weather in New York at 2026-10-22 11:00")
+    correct.append("Now: 72.1 °F")
+    correct.append("")
+    correct.append("Date        High °F  Feels hi °F   Low °F  Feels lo °F")
+    correct.append("----------  -------  -----------  -------  -----------")
+
+    assert output == "\n".join(correct)
+
+
+@pytest.mark.parametrize("units", [units_f, units_c, units_a], ids=["F", "C", "axolotl"])
+def test_table_alignment(units):
+    output = weathercli.formatting.formatted_output(loc_str, units, cw, [df1, df2, df3])
+    table = output.splitlines()[3:]
+
+    assert len({len(line) for line in table}) == 1
+    assert table[0].startswith("Date")
