@@ -23,6 +23,21 @@ def test_tokyo_happy_path():
     assert units.temperature_unit == "°F"
 
 
+def test_new_york_happy_path():
+    api = network.ApiClient(
+        session=FakeSession("geocode_new_york.json", "forecast_new_york_3day_metric.json")  # type: ignore[arg-type]
+    )
+    loc = main.get_location(api, "New York")
+    units, current, forecasts = main.get_weather_data(api, loc, "metric", 3)
+
+    assert loc.name == "New York"
+    assert forecasts[0].forecast_date == datetime.date(2026, 10, 21)
+    assert forecasts[0].daily_max_temp == 17.5
+    assert current.temp == 10.5
+    assert len(forecasts) == 3
+    assert units.temperature_unit == "°C"
+
+
 def test_unknown_location():
     api = network.ApiClient(
         session=FakeSession("geocode_nonsense.json", "forecast_tokyo_5day_imperial.json")  # type: ignore[arg-type]
@@ -47,10 +62,13 @@ def test_http_errors(status, expected):
         main.get_location(api, "Tokyo")
 
 
-def test_broken_fixture():
+@pytest.mark.parametrize(
+    "geocode", ["geocode_new_york_missing_latitude.json", "geocode_tokyo_bad_result.json"]
+)
+def test_broken_fixture(geocode):
     api = network.ApiClient(
         session=FakeSession(  # type: ignore[arg-type]
-            "geocode_new_york_missing_latitude.json",
+            geocode,
             "forecast_tokyo_5day_imperial.json",
         )
     )
