@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-FIXTURES = Path("tests/fixtures")
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 class FakeResponse:

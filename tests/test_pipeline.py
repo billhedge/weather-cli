@@ -37,9 +37,11 @@ def test_unknown_location():
 )
 def test_http_errors(status, expected):
     api = network.ApiClient(
-        session=FakeSession(
-            "geocode_tokyo.json", "forecast_tokyo_5day_imperial.json", status_code=status
-        )  # type: ignore[arg-type]
+        session=FakeSession(  # type: ignore[arg-type]
+            "geocode_tokyo.json",
+            "forecast_tokyo_5day_imperial.json",
+            status_code=status,
+        )
     )
     with pytest.raises(expected):
         main.get_location(api, "Tokyo")
@@ -47,7 +49,10 @@ def test_http_errors(status, expected):
 
 def test_broken_fixture():
     api = network.ApiClient(
-        session=FakeSession("geocode_new_york_broken.json", "forecast_tokyo_5day_imperial.json")  # type: ignore[arg-type]
+        session=FakeSession(  # type: ignore[arg-type]
+            "geocode_new_york_missing_latitude.json",
+            "forecast_tokyo_5day_imperial.json",
+        )
     )
-    with pytest.raises(ex.UnexpectedResponseError):
+    with pytest.raises(ex.InvalidJSONShapeError):
         main.get_location(api, "New York")
