@@ -15,11 +15,8 @@ dependencies = [
     "requests-cache>=1.2"
 ]
 
-# TODO (milestone 8): once src/weathercli/cli.py has a main() that returns an
-# exit code, register it as a console script here:
-#
-# [project.scripts]
-# weather = "weathercli.cli:main"
+[project.scripts]
+weather = "weathercli.main:main"
 
 [project.optional-dependencies]
 dev = [
