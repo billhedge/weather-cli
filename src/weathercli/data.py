@@ -1,3 +1,4 @@
+import datetime
 from dataclasses import dataclass
 
 
@@ -10,14 +11,14 @@ class Location:
 
 
 @dataclass(frozen=True)
-class Current_Weather:
-    date: str
-    temperature: float
+class CurrentWeather:
+    observed_at: datetime.datetime
+    temp: float
 
 
 @dataclass(frozen=True)
-class Forecast:
-    date: str
+class DailyForecast:
+    forecast_date: datetime.date
     daily_max_temp: float
     daily_min_temp: float
     apparent_max_temp: float

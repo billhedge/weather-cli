@@ -1,15 +1,17 @@
+import collections.abc as abc
+import datetime
 import sys
 
 import requests_cache
 
+import weathercli.arguments as arguments
 import weathercli.exceptions as ex
+import weathercli.formatting
 import weathercli.network as network
-from weathercli.data import Current_Weather, Forecast, Location, Units
+from weathercli.data import CurrentWeather, DailyForecast, Location, Units
 
 GEOCODE_ENDPOINT = "https://geocoding-api.open-meteo.com/v1/search"
 FORECAST_ENDPOINT = "https://api.open-meteo.com/v1/forecast"
-
-requests_cache.install_cache("weathercli_cache", expire_after=3600)
 
 
 def get_location(api: network.ApiClient, location_name: str) -> Location:
@@ -34,8 +36,8 @@ def get_location(api: network.ApiClient, location_name: str) -> Location:
 
 
 def get_weather_data(
-    api: network.ApiClient, loc: Location
-) -> tuple[Units, Current_Weather, Forecast]:
+    api: network.ApiClient, loc: Location, unit_type: str, days: int
+) -> tuple[Units, CurrentWeather, list[DailyForecast]]:
     forecast_params: dict[str, str | float] = {
         "latitude": loc.latitude,
         "longitude": loc.longitude,
@@ -46,10 +48,13 @@ def get_weather_data(
         # just temperature
         "current": "temperature_2m",
         "timezone": loc.timezone,
-        "wind_speed_unit": "mph",
-        "temperature_unit": "fahrenheit",
-        "precipitation_unit": "inch",
+        "forecast_days": days,
     }
+    if unit_type == "imperial":  # metric units are default, so they don't need to be specified
+        forecast_params["wind_speed_unit"] = "mph"
+        forecast_params["temperature_unit"] = "fahrenheit"
+        forecast_params["precipitation_unit"] = "inch"
+
     forecast_response = api.get_json(FORECAST_ENDPOINT, params=forecast_params)
 
     try:
@@ -62,46 +67,71 @@ def get_weather_data(
         )
 
         current_weather_dict = forecast_response["current"]
-        current_weather = Current_Weather(
-            date=current_weather_dict["time"],
-            temperature=current_weather_dict["temperature_2m"],
+        current_weather = CurrentWeather(
+            observed_at=datetime.datetime.fromisoformat(current_weather_dict["time"]),
+            temp=current_weather_dict["temperature_2m"],
         )
 
         forecast_dict = forecast_response["daily"]
-        forecast = Forecast(
-            date=forecast_dict["time"][0],
-            daily_max_temp=forecast_dict["temperature_2m_max"][0],
-            daily_min_temp=forecast_dict["temperature_2m_min"][0],
-            apparent_max_temp=forecast_dict["apparent_temperature_max"][0],
-            apparent_min_temp=forecast_dict["apparent_temperature_min"][0],
+        # Zip the values together
+        zipped_raw = zip(
+            forecast_dict["time"],
+            forecast_dict["temperature_2m_max"],
+            forecast_dict["temperature_2m_min"],
+            forecast_dict["apparent_temperature_max"],
+            forecast_dict["apparent_temperature_min"],
+            strict=True,
         )
 
-        return units, current_weather, forecast
+        # Instantiate the dataclasses, converting the date string on the fly
+        daily_forecasts = [
+            DailyForecast(
+                forecast_date=datetime.date.fromisoformat(time),
+                daily_max_temp=temperature_2m_max,
+                daily_min_temp=temperature_2m_min,
+                apparent_max_temp=apparent_temperature_max,
+                apparent_min_temp=apparent_temperature_min,
+            )
+            for (
+                time,
+                temperature_2m_max,
+                temperature_2m_min,
+                apparent_temperature_max,
+                apparent_temperature_min,
+            ) in zipped_raw
+        ]
 
-    except (KeyError, IndexError) as e:
+        return units, current_weather, daily_forecasts
+
+    except (KeyError, ValueError) as e:
         raise ex.InvalidJSONShapeError(
             f"Unexpected JSON structure received from the API: {e}"
         ) from e
 
 
-def main() -> None:
-    location_name = input("Enter a location: ")
+def main(argv: abc.Sequence[str] | None = None) -> int:
+    args = arguments.parse_args(argv)
+
+    if not args.no_cache:
+        requests_cache.install_cache("weathercli_cache", expire_after=args.cache_expire)
+
+    location_name = " ".join(args.location)
     api = network.ApiClient()
     try:
         loc = get_location(api, location_name)
-        units, current_weather, forecast = get_weather_data(api, loc)
+        units, current_weather, forecasts = get_weather_data(api, loc, args.units, args.days)
     except ex.AppError as e:
         print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+        return 1
 
-    print("Today's date:", current_weather.date)
-    print("Current temperature:", current_weather.temperature, units.temperature_unit)
-    print("Forecast for:", forecast.date)
-    print("Daily maximum temperature:", forecast.daily_max_temp, units.temperature_unit)
-    print("Daily minimum temperature:", forecast.daily_min_temp, units.temperature_unit)
-    print("Apparent maximum temperature:", forecast.apparent_max_temp, units.temperature_unit)
-    print("Apparent minimum temperature:", forecast.apparent_min_temp, units.temperature_unit)
+    if args.json:
+        print(weathercli.formatting.json_output(location_name, units, current_weather, forecasts))
+    else:
+        print(
+            weathercli.formatting.formatted_output(location_name, units, current_weather, forecasts)
+        )
+    return 0
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__":  # pragma: no cover
+    sys.exit(main())

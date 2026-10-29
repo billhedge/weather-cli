@@ -1,0 +1,51 @@
+import json
+from pathlib import Path
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+class FakeResponse:
+    def __init__(self, data, status_code=200) -> None:
+        self._data = data
+        self.status_code = status_code
+
+    def json(self):
+        return self._data
+
+
+class FakeSession:
+    def __init__(self, geocode, forecast, status_code=200) -> None:
+        self.files = {"geocoding": geocode, "forecast": forecast}
+        self.status_code = status_code
+
+    def get(self, url, params=None, timeout=None):
+        key = "geocoding" if "geocoding" in url else "forecast"
+        data = json.loads((FIXTURES / self.files[key]).read_text(encoding="utf-8"))
+        return FakeResponse(data, self.status_code)
+
+
+class RaisingSession:
+    """a session whose get() raises whatever exception you give it"""
+
+    def __init__(self, exc):
+        self.exc = exc
+
+    def get(self, url, params=None, timeout=None):
+        raise self.exc
+
+
+class StaticSession:
+    """A session that returns one fixed response, and records how it was called."""
+
+    def __init__(self, response):
+        self.response = response
+        self.calls = []
+
+    def get(self, url, params=None, timeout=None):
+        self.calls.append((url, params, timeout))
+        return self.response
+
+
+class BadJsonResponse(FakeResponse):
+    def json(self):
+        raise ValueError("not JSON")

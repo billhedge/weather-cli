@@ -34,3 +34,6 @@ Thumbs.db
 # Local cache and temporary files
 *.log
 *.sqlite
+
+# uv lock file (this project uses pip + pyproject.toml)
+uv.lock
