@@ -1,4 +1,5 @@
 import functools
+import json
 
 import pytest
 
@@ -58,4 +59,27 @@ def test_main_installs_cache(use_fake_session, monkeypatch):
 
     assert code == 0
     assert calls == [(("weathercli_cache",), {"expire_after": 7200})]
-    # one call; check the cache name and expire_after=7200
+
+
+def test_main_success_json(use_fake_session, capsys):
+    use_fake_session("geocode_tokyo.json", "forecast_tokyo_1day_imperial.json")
+
+    code = main.main(["Tokyo", "--no-cache", "--json"])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    data = json.loads(captured.out)
+    assert data["location_name"] == "Tokyo"
+    assert len(data["weather"]["forecasts"]) == 1
+    assert captured.err == ""
+
+
+def test_main_unknown_location_json(use_fake_session, capsys):
+    use_fake_session("geocode_nonsense.json", "forecast_tokyo_1day_imperial.json")
+
+    code = main.main(["Zzzzzz", "--no-cache", "--json"])
+
+    captured = capsys.readouterr()
+    assert code == 1
+    assert captured.out == ""
+    assert "Location not" in captured.err

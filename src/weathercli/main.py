@@ -124,7 +124,12 @@ def main(argv: abc.Sequence[str] | None = None) -> int:
         print(f"Error: {e}", file=sys.stderr)
         return 1
 
-    print(weathercli.formatting.formatted_output(location_name, units, current_weather, forecasts))
+    if args.json:
+        print(weathercli.formatting.json_output(location_name, units, current_weather, forecasts))
+    else:
+        print(
+            weathercli.formatting.formatted_output(location_name, units, current_weather, forecasts)
+        )
     return 0
 
 

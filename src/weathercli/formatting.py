@@ -1,3 +1,5 @@
+import json
+
 import weathercli.data as d
 
 GAP = "  "
@@ -48,3 +50,35 @@ def formatted_output(
         rows.append(GAP.join([date_str, formatted_temps]))
 
     return "\n".join(rows)
+
+
+def json_output(
+    location_name: str,
+    units: d.Units,
+    current_weather: d.CurrentWeather,
+    forecasts: list[d.DailyForecast],
+) -> str:
+    days = []
+    for day in forecasts:
+        add_day = {
+            "date": day.forecast_date.isoformat(),
+            "daily_max_temp": day.daily_max_temp,
+            "apparent_max_temp": day.apparent_max_temp,
+            "daily_min_temp": day.daily_min_temp,
+            "apparent_min_temp": day.apparent_min_temp,
+        }
+        days.append(add_day)
+
+    data = {
+        "location_name": location_name,
+        "units": {"temp": units.temperature_unit},
+        "weather": {
+            "current": {
+                "observed_at": current_weather.observed_at.isoformat(),
+                "temp": current_weather.temp,
+            },
+            "forecasts": days,
+        },
+    }
+
+    return json.dumps(data, indent=2)

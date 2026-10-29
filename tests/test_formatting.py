@@ -1,4 +1,5 @@
 import datetime
+import json
 
 import pytest
 
@@ -98,3 +99,54 @@ def test_table_alignment(units):
 
     assert len({len(line) for line in table}) == 1
     assert table[0].startswith("Date")
+
+
+@pytest.mark.parametrize("units", [units_f, units_c, units_a], ids=["F", "C", "axolotl"])
+def test_json(units):
+    output = weathercli.formatting.json_output(loc_str, units, cw, [df1, df2, df3])
+    correct = {
+        "location_name": "New York",
+        "units": {"temp": units.temperature_unit},
+        "weather": {
+            "current": {"observed_at": "2026-10-22T11:00:00", "temp": 72.1},
+            "forecasts": [
+                {
+                    "date": "2026-10-22",
+                    "daily_max_temp": 73.1,
+                    "apparent_max_temp": 75.5,
+                    "daily_min_temp": 60.2,
+                    "apparent_min_temp": 62.5,
+                },
+                {
+                    "date": "2026-10-23",
+                    "daily_max_temp": 72.0,
+                    "apparent_max_temp": 72.3,
+                    "daily_min_temp": 63.5,
+                    "apparent_min_temp": 65.1,
+                },
+                {
+                    "date": "2026-10-24",
+                    "daily_max_temp": 105.7,
+                    "apparent_max_temp": 121.2,
+                    "daily_min_temp": -43.2,
+                    "apparent_min_temp": -123.1,
+                },
+            ],
+        },
+    }
+
+    assert json.loads(output) == correct
+
+
+def test_json_empty_forecasts():
+    output = weathercli.formatting.json_output(loc_str, units_f, cw, [])
+    correct = {
+        "location_name": "New York",
+        "units": {"temp": units_f.temperature_unit},
+        "weather": {
+            "current": {"observed_at": "2026-10-22T11:00:00", "temp": 72.1},
+            "forecasts": [],
+        },
+    }
+
+    assert json.loads(output) == correct
