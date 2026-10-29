@@ -1,6 +1,7 @@
 from typing import Any
 
 import requests
+import requests_cache
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -8,14 +9,25 @@ import weathercli.exceptions as ex
 
 
 class ApiClient:
-    def __init__(self, session: requests.Session | None = None, timeout: float = 10):
-        self.session = session if session is not None else self.build_session()
+    def __init__(
+        self,
+        session: requests.Session | None = None,
+        timeout: float = 10,
+        cache_expire: int | None = None,
+    ):
+        self.session = session if session is not None else self.build_session(cache_expire)
         self.timeout = timeout
 
     @staticmethod
-    def build_session() -> requests.Session:
-        """Builds a requests session with retry logic."""
-        session = requests.Session()
+    def build_session(cache_expire: int | None = None) -> requests.Session:
+        """Builds a requests session with retry logic and optional response caching."""
+        if cache_expire is None:
+            session = requests.Session()
+        else:
+            session = requests_cache.CachedSession(
+                cache_name="weathercli_cache", expire_after=cache_expire
+            )
+
         status_force_list = [429, 500, 502, 503, 504]
         backoff_factor = 0.5
         retry_strategy = Retry(

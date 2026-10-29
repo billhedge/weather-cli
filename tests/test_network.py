@@ -1,5 +1,6 @@
 import pytest
 import requests
+import requests_cache
 
 from fakes import BadJsonResponse, FakeResponse, RaisingSession, StaticSession
 from weathercli import exceptions as ex
@@ -135,3 +136,27 @@ def test_injected_session_is_not_modified():
     make_client(session)
 
     assert session.get_adapter("https://example.com") is before
+
+
+def test_injected_session_wins_over_cache_setting():
+    session = requests.Session()
+
+    client = network.ApiClient(session=session, cache_expire=60)
+
+    assert client.session is session
+
+
+def test_not_cached_session():
+    assert not isinstance(network.ApiClient.build_session(), requests_cache.CachedSession)
+    assert not isinstance(network.ApiClient.build_session(None), requests_cache.CachedSession)
+
+
+def test_build_session_with_cache(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    session = network.ApiClient.build_session(60)
+
+    assert isinstance(session, requests_cache.CachedSession)
+    assert session.settings.expire_after == 60
+
+    retry = session.get_adapter("https://example.com").max_retries
+    assert retry.total == 3
