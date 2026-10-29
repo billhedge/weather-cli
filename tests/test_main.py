@@ -46,19 +46,27 @@ def test_main_unknown_location(use_fake_session, capsys):
     assert "Location not" in captured.err
 
 
-def test_main_installs_cache(use_fake_session, monkeypatch):
-    use_fake_session("geocode_tokyo.json", "forecast_tokyo_1day_imperial.json")
+@pytest.mark.parametrize(
+    ("extra_args", "expected"),
+    [([], 3600), (["--cache-expire", "7200"], 7200), (["--no-cache"], None)],
+    ids=["default", "custom", "no-cache"],
+)
+def test_main_passes_cache_setting(monkeypatch, extra_args, expected):
+    real_client = network.ApiClient  # capture BEFORE patching
     calls = []
-    monkeypatch.setattr(
-        main.requests_cache,
-        "install_cache",
-        lambda *args, **kwargs: calls.append((args, kwargs)),
-    )
 
-    code = main.main(["Tokyo", "--cache-expire", "7200"])
+    def spy(**kwargs):
+        calls.append(kwargs)
+        return real_client(
+            session=FakeSession("geocode_tokyo.json", "forecast_tokyo_1day_imperial.json")  # type: ignore[arg-type]
+        )
 
+    monkeypatch.setattr(network, "ApiClient", spy)
+
+    code = main.main(["Tokyo", *extra_args])
+
+    assert calls == [{"cache_expire": expected}]
     assert code == 0
-    assert calls == [(("weathercli_cache",), {"expire_after": 7200})]
 
 
 def test_main_success_json(use_fake_session, capsys):

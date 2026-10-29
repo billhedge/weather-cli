@@ -2,8 +2,6 @@ import collections.abc as abc
 import datetime
 import sys
 
-import requests_cache
-
 import weathercli.arguments as arguments
 import weathercli.exceptions as ex
 import weathercli.formatting
@@ -112,11 +110,10 @@ def get_weather_data(
 def main(argv: abc.Sequence[str] | None = None) -> int:
     args = arguments.parse_args(argv)
 
-    if not args.no_cache:
-        requests_cache.install_cache("weathercli_cache", expire_after=args.cache_expire)
+    api = network.ApiClient(cache_expire=None if args.no_cache else args.cache_expire)
 
     location_name = " ".join(args.location)
-    api = network.ApiClient()
+
     try:
         loc = get_location(api, location_name)
         units, current_weather, forecasts = get_weather_data(api, loc, args.units, args.days)
