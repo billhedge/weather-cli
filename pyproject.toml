@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "weathercli"
 version = "0.1.0"
-description = "Command-line weather and air quality lookup powered by the free Open-Meteo API."
+description = "Command-line weather forecast lookup powered by the free Open-Meteo API."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -26,6 +26,9 @@ dev = [
     "mypy>=1.11",
     "types-requests>=2.31"
 ]
+
+[project.urls]
+Repository = "https://github.com/billhedge/weather-cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/weathercli"]
